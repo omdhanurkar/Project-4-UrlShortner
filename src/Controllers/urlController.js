@@ -16,24 +16,40 @@ const shortUrl = async function (req, res) {
         if (!validUrl.isUri(longUrl))
             return res.status(400).send({ status: false, message: "longUrl is not Valid" })
 
-        const checkUrl = await urlModel.find({ longUrl }).select({_id:0,longUrl:1,shortUrl:1,urlCode:1})
+        const checkUrl = await urlModel.findOne({ longUrl }).select({ _id: 0, longUrl: 1, shortUrl: 1, urlCode: 1 })
 
-        if (checkUrl.length == 0) {
+        if (!checkUrl) {
             let urlCode = shortId.generate(longUrl).toLowerCase()
-            let shortUrl = "localhost:3000/" + urlCode
+            let shortUrl = "http://localhost:3000/" + urlCode
 
             let urlDetails = await urlModel.create({ longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode })
-            let filter = { longUrl: urlDetails.longUrl, shortUrl: urlDetails.shortUrl, urlCode: urlDetails.urlCode }
+            let filter = { urlCode: urlDetails.urlCode, longUrl: urlDetails.longUrl, shortUrl: urlDetails.shortUrl }
             return res.status(201).send({ status: true, data: filter })
 
         }
-        
+
         return res.status(200).send({ status: true, data: checkUrl })
-            //return res.status(400).send({ status: false, message: "longUrl is already exist" })
 
     } catch (err) {
         return res.status(500).send({ status: false, message: err.message })
     }
 }
 
-module.exports = { shortUrl }
+const getUrl = async function (req, res) {
+    try {
+        let urlCode = req.params.urlCode
+
+        if (!urlCode)
+            return res.status(400).send({ status: false, message: "longUrl is mandatory" })
+
+
+        const details = await urlModel.findOne({ urlCode }).select({ _id: 0, longUrl: 1 })
+        return res.status(200).send({ status: true, data: details })
+
+    } catch (error) {
+        return res.status(500).send({ status: false, message: error.message })
+
+    }
+}
+
+module.exports = { shortUrl, getUrl };

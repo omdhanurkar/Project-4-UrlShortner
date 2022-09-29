@@ -3,10 +3,10 @@ const shortId = require("shortid")
 const validUrl = require("valid-url")
 
 function isPresent(value) {
-    if(typeof(value)==="undefined" || typeof(value)===null) return false
-    if(typeof(value)==="string" && value.trim().length == 0) return false
+    if (typeof (value) === "undefined" || typeof (value) === null) return false
+    if (typeof (value) === "string" && value.trim().length == 0) return false
     return true
- }
+}
 
 
 const shortUrl = async function (req, res) {
@@ -44,10 +44,13 @@ const getUrl = async function (req, res) {
 
         if (!urlCode) return res.status(400).send({ status: false, message: "longUrl is mandatory" })
 
-        const details = await urlModel.findOne({ urlCode }).select({ _id: 0, longUrl: 1 })
+        const details = await urlModel.findOne({ urlCode })
 
-        if(!details) return res.status(404).send({ status: false, message: "No data found" })
-        return res.status(200).send({ status: true, data: details })
+        if (!details) return res.status(404).send({ status: false, message: "No data found" })
+
+        let longUrl = details.longUrl
+        return res.status(302).redirect(longUrl)
+
 
     } catch (error) {
         return res.status(500).send({ status: false, message: error.message })

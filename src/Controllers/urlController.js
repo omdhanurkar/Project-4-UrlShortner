@@ -13,23 +13,27 @@ const shortUrl = async function (req, res) {
         if (!longUrl)
             return res.status(400).send({ status: false, message: "longUrl is mandatory" })
 
-        if (!validUrl(longUrl))
+        if (!validUrl.isUri(longUrl))
             return res.status(400).send({ status: false, message: "longUrl is not Valid" })
 
-        const checkUrl = await urlModel.find(longUrl)
-        if (checkUrl)
-            return res.status(400).send({ status: false, message: "longUrl is already exist" })
+        const checkUrl = await urlModel.find({ longUrl }).select({_id:0,longUrl:1,shortUrl:1,urlCode:1})
 
-        if(!checkUrl){
-            let shortUrl = shortId.generate(longUrl).toLowerCase()
-            console.log(shortUrl)
-            return res.send(shortUrl)
-            
+        if (checkUrl.length == 0) {
+            let urlCode = shortId.generate(longUrl).toLowerCase()
+            let shortUrl = "localhost:3000/" + urlCode
+
+            let urlDetails = await urlModel.create({ longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode })
+            let filter = { longUrl: urlDetails.longUrl, shortUrl: urlDetails.shortUrl, urlCode: urlDetails.urlCode }
+            return res.status(201).send({ status: true, data: filter })
+
         }
+        
+        return res.status(200).send({ status: true, data: checkUrl })
+            //return res.status(400).send({ status: false, message: "longUrl is already exist" })
 
     } catch (err) {
-
+        return res.status(500).send({ status: false, message: err.message })
     }
 }
 
-module.exports={shortUrl}
+module.exports = { shortUrl }

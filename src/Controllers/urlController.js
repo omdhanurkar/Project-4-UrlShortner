@@ -35,7 +35,7 @@ const shortUrl = async function (req, res) {
 
         if (!isPresent(longUrl)) return res.status(400).send({ status: false, message: "longUrl is mandatory" })
 
-        if (!validUrl.isUri(longUrl)) return res.status(400).send({ status: false, message: "longUrl is not Valid" })
+        if (!validUrl.isWebUri(longUrl)) return res.status(400).send({ status: false, message: "longUrl is not Valid" })
 
         const checkUrl = await urlModel.findOne({ longUrl }).select({ _id: 0, longUrl: 1, shortUrl: 1, urlCode: 1 })
 
@@ -44,7 +44,7 @@ const shortUrl = async function (req, res) {
             let shortUrl = "http://localhost:3000/" + urlCode
 
             let urlDetails = await urlModel.create({ longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode })
-            await SET_ASYNC(`${urlCode}`, (urlDetails.longUrl))
+            await SET_ASYNC(`${urlCode}`, JSON.stringify(urlDetails))
             let filter = { urlCode: urlDetails.urlCode, longUrl: urlDetails.longUrl, shortUrl: urlDetails.shortUrl }
             return res.status(201).send({ status: true, data: filter })
 
@@ -65,11 +65,12 @@ const getUrl = async function (req, res) {
 
         let cachedData = await GET_ASYNC(`${urlCode}`)
         if (cachedData) {
-            return res.status(302).redirect(cachedData)
+            let Data = JSON.parse(cachedData)
+            return res.status(302).redirect(Data.longUrl)
         } else {
             let urlDetails = await urlModel.findOne({urlCode});
             if(!urlDetails) return res.status(404).send({ status: false, message: "No data found" })
-            await SET_ASYNC(`${urlCode}`, (urlDetails.longUrl))
+            await SET_ASYNC(`${urlCode}`, JSON.stringify(urlDetails))
             return res.status(302).redirect(urlDetails.longUrl)
         }
 

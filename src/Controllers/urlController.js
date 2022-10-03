@@ -1,12 +1,53 @@
 const urlModel = require("../Models/urlModel")
 const shortId = require("shortid")
 const validUrl = require("valid-url")
+const redis = require("redis");
+const { promisify } = require("util");
+
+//Connect to redis
+const redisClient = redis.createClient(
+    12063,
+    "redis-12063.c301.ap-south-1-1.ec2.cloud.redislabs.com",
+    { no_ready_check: true }
+);
+redisClient.auth("OFhshBtOzN0Dg66ExMOGBfe0VChAB9n8", function (err) {
+    if (err) throw err;
+});
+
+redisClient.on("connect", async function () {
+    console.log("Connected to Redis..");
+});
+
+
+
+//1. connect to the server
+//2. use the commands :
+
+//Connection setup for redis
+
+const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
+const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
+
+
+const createAuthor = async function (req, res) {
+    let data = req.body;
+    let authorCreated = await authorModel.create(data);
+    res.send({ data: authorCreated });
+};
+
+const fetchAuthorProfile = async function (req, res) {
+
+
+};
+``
+module.exports.createAuthor = createAuthor;
+module.exports.fetchAuthorProfile = fetchAuthorProfile;
 
 function isPresent(value) {
-    if(typeof(value)==="undefined" || typeof(value)===null) return false
-    if(typeof(value)==="string" && value.trim().length == 0) return false
+    if (typeof (value) === "undefined" || typeof (value) === null) return false
+    if (typeof (value) === "string" && value.trim().length == 0) return false
     return true
- }
+}
 
 
 const shortUrl = async function (req, res) {
@@ -46,8 +87,16 @@ const getUrl = async function (req, res) {
 
         const details = await urlModel.findOne({ urlCode }).select({ _id: 0, longUrl: 1 })
 
-        if(!details) return res.status(404).send({ status: false, message: "No data found" })
-        return res.status(200).send({ status: true, data: details })
+        if (!details) return res.status(404).send({ status: false, message: "No data found" })
+        //return res.status(200).send({ status: true, data: details })
+        let cachedData = await GET_ASYNC(`${urlCode}`)
+        if (cachedData) {
+            return res.status(200).send({ status: true, data: cachedData })
+        } else {
+            let profile = await urlModel.findOne({urlCode});
+            await SET_ASYNC(`${urlCode}`, JSON.stringify(profile))
+            return res.status(200).send({ status: true, data: profile })
+        }
 
     } catch (error) {
         return res.status(500).send({ status: false, message: error.message })

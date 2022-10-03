@@ -18,37 +18,14 @@ redisClient.on("connect", async function () {
     console.log("Connected to Redis..");
 });
 
-
-
-//1. connect to the server
-//2. use the commands :
-
-//Connection setup for redis
-
 const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
 const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
-
-const createAuthor = async function (req, res) {
-    let data = req.body;
-    let authorCreated = await authorModel.create(data);
-    res.send({ data: authorCreated });
-};
-
-const fetchAuthorProfile = async function (req, res) {
-
-
-};
-``
-module.exports.createAuthor = createAuthor;
-module.exports.fetchAuthorProfile = fetchAuthorProfile;
-
 function isPresent(value) {
-    if (typeof (value) === "undefined" || typeof (value) === null) return false
-    if (typeof (value) === "string" && value.trim().length == 0) return false
+    if  (typeof  (value)  ===  "undefined" || typeof  (value)  ===  null) return false
+    if  (typeof  (value)  ===  "string" && value.trim().length == 0) return false
     return true
 }
-
 
 const shortUrl = async function (req, res) {
     try {
@@ -67,6 +44,7 @@ const shortUrl = async function (req, res) {
             let shortUrl = "http://localhost:3000/" + urlCode
 
             let urlDetails = await urlModel.create({ longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode })
+            await SET_ASYNC(`${urlCode}`, (urlDetails.longUrl))
             let filter = { urlCode: urlDetails.urlCode, longUrl: urlDetails.longUrl, shortUrl: urlDetails.shortUrl }
             return res.status(201).send({ status: true, data: filter })
 
@@ -83,19 +61,16 @@ const getUrl = async function (req, res) {
     try {
         let urlCode = req.params.urlCode
 
-        if (!urlCode) return res.status(400).send({ status: false, message: "longUrl is mandatory" })
+        if (!urlCode) return res.status(400).send({ status: false, message: "urlCode is mandatory" })
 
-        const details = await urlModel.findOne({ urlCode }).select({ _id: 0, longUrl: 1 })
-
-        if (!details) return res.status(404).send({ status: false, message: "No data found" })
-        //return res.status(200).send({ status: true, data: details })
         let cachedData = await GET_ASYNC(`${urlCode}`)
         if (cachedData) {
-            return res.status(200).send({ status: true, data: cachedData })
+            return res.status(302).redirect(cachedData)
         } else {
-            let profile = await urlModel.findOne({urlCode});
-            await SET_ASYNC(`${urlCode}`, JSON.stringify(profile))
-            return res.status(200).send({ status: true, data: profile })
+            let urlDetails = await urlModel.findOne({urlCode});
+            if(!urlDetails) return res.status(404).send({ status: false, message: "No data found" })
+            await SET_ASYNC(`${urlCode}`, (urlDetails.longUrl))
+            return res.status(302).redirect(urlDetails.longUrl)
         }
 
     } catch (error) {

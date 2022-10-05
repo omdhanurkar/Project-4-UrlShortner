@@ -13,7 +13,7 @@ mongoose.connect("mongodb+srv://group60Database:pdMj2eV7oExXwWKc@group60database
     .then(() => console.log("MongoDb is connected"))
     .catch(err => console.log(err))
 
-app.use('/', route);
+app.use('/', route); 
 
 app.use((req, res) => {
     return res.status(400).send({ status: false, message: "You enterd wrong Url" })

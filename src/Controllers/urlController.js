@@ -22,8 +22,8 @@ const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
 const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
 function isPresent(value) {
-    if  (typeof  (value)  ===  "undefined" || typeof  (value)  ===  null) return false
-    if  (typeof  (value)  ===  "string" && value.trim().length == 0) return false
+    if (typeof (value) === "undefined" || typeof (value) === null) return false
+    if (typeof (value) === "string" && value.trim().length == 0) return false
     return true
 }
 
@@ -63,15 +63,17 @@ const getUrl = async function (req, res) {
 
         if (!urlCode) return res.status(400).send({ status: false, message: "urlCode is mandatory" })
 
+
         let cachedData = await GET_ASYNC(`${urlCode}`)
         if (cachedData) {
             let Data = JSON.parse(cachedData)
             return res.status(302).redirect(Data.longUrl)
-        } else {
-            let urlDetails = await urlModel.findOne({urlCode});
-            if(!urlDetails) return res.status(404).send({ status: false, message: "No data found" })
+        }
+        else {
+            let urlDetails = await urlModel.findOne({ urlCode });
+            if (!urlDetails) return res.status(404).send({ status: false, message: "Url Not found" })
             await SET_ASYNC(`${urlCode}`, JSON.stringify(urlDetails))
-            return res.status(302).redirect(urlDetails.longUrl)
+            return res.status(302).redirect(urlDetails.longUrl)  
         }
 
     } catch (error) {

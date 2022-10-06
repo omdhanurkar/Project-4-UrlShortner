@@ -2,7 +2,7 @@ const urlModel = require("../Models/urlModel")
 const shortId = require("shortid")
 const validUrl = require("valid-url")
 const redis = require("redis");
-const { promisify } = require("util");
+const {promisify} = require("util");
 
 //Connect to redis
 // we make client of name redesclient
@@ -19,7 +19,7 @@ redisClient.on("connect", async function () {              //on is the listener 
     console.log("Connected to Redis..");
 });
 
-const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);      //it return promises in place of callback function.it bind the client Function
+const SET_ASYNC = promisify(redisClient.SETEX).bind(redisClient);
 const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
 function isPresent(value) {
@@ -28,13 +28,15 @@ function isPresent(value) {
     return true
 }
 
-const shortUrl = async function (req, res) {
+const createShortUrl = async function (req, res) {
     try {
         let { longUrl } = req.body;
 
         if (Object.keys(req.body).length == 0) return res.status(400).send({ status: false, message: "Plz enter some data in body" })
 
         if (!isPresent(longUrl)) return res.status(400).send({ status: false, message: "longUrl is mandatory" })
+
+        longUrl = longUrl.trim()
 
         if (!validUrl.isWebUri(longUrl)) return res.status(400).send({ status: false, message: "longUrl is not Valid" })
 
@@ -45,10 +47,9 @@ const shortUrl = async function (req, res) {
             let shortUrl = "http://localhost:3000/" + urlCode
 
             let urlDetails = await urlModel.create({ longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode })
-            await SET_ASYNC(`${urlCode}`, JSON.stringify(urlDetails))                     //set_async it store caches userId in keyvalue pairs
+            await SET_ASYNC(`${urlCode}`,3600, JSON.stringify(urlDetails))
             let filter = { urlCode: urlDetails.urlCode, longUrl: urlDetails.longUrl, shortUrl: urlDetails.shortUrl }
             return res.status(201).send({ status: true, data: filter })
-
         }
 
         return res.status(200).send({ status: true, data: checkUrl })
@@ -58,12 +59,11 @@ const shortUrl = async function (req, res) {
     }
 }
 
-const getUrl = async function (req, res) {
+const getShortUrl = async function (req, res) { 
     try {
         let urlCode = req.params.urlCode
 
         if (!urlCode) return res.status(400).send({ status: false, message: "urlCode is mandatory" })
-
 
         let cachedData = await GET_ASYNC(`${urlCode}`)
         if (cachedData) {
@@ -72,9 +72,9 @@ const getUrl = async function (req, res) {
         }
         else {
             let urlDetails = await urlModel.findOne({ urlCode });
-            if (!urlDetails) return res.status(404).send({ status: false, message: "Url Not found" })
-            await SET_ASYNC(`${urlCode}`,3600,JSON.stringify(urlDetails))
-            return res.status(302).redirect(urlDetails.longUrl)  
+            if (!urlDetails) return res.status(404).send({ status: false, message: "urlCode not found" })
+            await SET_ASYNC(`${urlCode}`,3600, JSON.stringify(urlDetails))
+            return res.status(302).redirect(urlDetails.longUrl)
         }
 
     } catch (error) {
@@ -83,4 +83,4 @@ const getUrl = async function (req, res) {
     }
 }
 
-module.exports = { shortUrl, getUrl };
+module.exports = { createShortUrl, getShortUrl };

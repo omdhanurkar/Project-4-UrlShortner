@@ -5,20 +5,21 @@ const redis = require("redis");
 const { promisify } = require("util");
 
 //Connect to redis
+// we make client of name redesclient
 const redisClient = redis.createClient(
-    12063,
-    "redis-12063.c301.ap-south-1-1.ec2.cloud.redislabs.com",
+    12063,                                                   //port number
+    "redis-12063.c301.ap-south-1-1.ec2.cloud.redislabs.com",  //host name and uri of redis
     { no_ready_check: true }
 );
-redisClient.auth("OFhshBtOzN0Dg66ExMOGBfe0VChAB9n8", function (err) {
+redisClient.auth("OFhshBtOzN0Dg66ExMOGBfe0VChAB9n8", function (err) {       //it authenticate the client
     if (err) throw err;
 });
 
-redisClient.on("connect", async function () {
+redisClient.on("connect", async function () {              //on is the listener which when we event is listen then it print in console
     console.log("Connected to Redis..");
 });
 
-const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
+const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);      //it return promises in place of callback function.it bind the client Function
 const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
 function isPresent(value) {
@@ -44,7 +45,7 @@ const shortUrl = async function (req, res) {
             let shortUrl = "http://localhost:3000/" + urlCode
 
             let urlDetails = await urlModel.create({ longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode })
-            await SET_ASYNC(`${urlCode}`, JSON.stringify(urlDetails))
+            await SET_ASYNC(`${urlCode}`, JSON.stringify(urlDetails))                     //set_async it store caches userId in keyvalue pairs
             let filter = { urlCode: urlDetails.urlCode, longUrl: urlDetails.longUrl, shortUrl: urlDetails.shortUrl }
             return res.status(201).send({ status: true, data: filter })
 
@@ -72,7 +73,7 @@ const getUrl = async function (req, res) {
         else {
             let urlDetails = await urlModel.findOne({ urlCode });
             if (!urlDetails) return res.status(404).send({ status: false, message: "Url Not found" })
-            await SET_ASYNC(`${urlCode}`, JSON.stringify(urlDetails))
+            await SET_ASYNC(`${urlCode}`,3600,JSON.stringify(urlDetails))
             return res.status(302).redirect(urlDetails.longUrl)  
         }
 
